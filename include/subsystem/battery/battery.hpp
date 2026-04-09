@@ -39,7 +39,7 @@ private:
 
     // hardware
     float _dividerConst;
-    float _pin;
+    uint8_t _pin;
 
     // EMA
     EMAFilter* _ema;
