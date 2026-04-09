@@ -1,10 +1,12 @@
 #include "telemetry/manager.h"
 #include <Arduino.h>
 
-
 TelemetryManager* telemetry = new TelemetryManager();
 
 void setup() {
+    Serial.begin(115200);
+    Serial.println("Initializing...");
+
     telemetry->init("ESP-WATER-GUN");
     telemetry->start(0);
 }

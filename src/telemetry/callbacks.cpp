@@ -5,10 +5,12 @@
 #define PSI_MAX 100
 
 void ServerCallbacks::onConnect(BLEServer* pServer) {
+    Serial.println("[BLE] Device connected!");
     _pManager->handleConnect();
 }
 
 void ServerCallbacks::onDisconnect(BLEServer* pServer) {
+    Serial.println("[BLE] Device disconnected!");
     _pManager->handleDisconnect();
     pServer->startAdvertising(); // begin advertising again
 }
@@ -21,6 +23,7 @@ void WriteCallbacks::onWrite(BLECharacteristic* pChar) {
     // validate data
     int received = raw.toInt();
     if (received >= PSI_MIN && received <= PSI_MAX) {
+        Serial.printf("[BLE] Received PSI %d\n", received);
         _pManager->setPSITarget(received);
     }
 }
