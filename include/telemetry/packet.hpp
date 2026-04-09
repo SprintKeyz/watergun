@@ -1,6 +1,6 @@
 #pragma once
 
-struct TelemetryPacket {
+struct __attribute__((packed)) TelemetryPacket {
     float batteryVoltage;
     int batteryPct;
     float waterLevel;
