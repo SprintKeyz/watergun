@@ -1,7 +1,11 @@
+#include "pins.h"
+#include "subsystem/battery/battery.hpp"
 #include "telemetry/manager.h"
+
 #include <Arduino.h>
 
 TelemetryManager* telemetry = new TelemetryManager();
+BatteryManager* battery = new BatteryManager(BATTERY_PIN, DIVIDER_CONST);
 
 void setup() {
     Serial.begin(115200);
@@ -9,24 +13,24 @@ void setup() {
 
     telemetry->init("ESP-WATER-GUN");
     telemetry->start(0);
+
+    analogReadResolution(10);
+    analogSetAttenuation(ADC_11db);
+
+    // TODO: make sure we set analogreadresolution and ADC_11db attenuation
+    // somewhere else!
 }
 
 void loop() {
-    unsigned long now = millis();
+    battery->update();
 
-    float period = 14000.0;
-    float angle = (2.0 * M_PI * now) / period;
-
-    float sineValue = sin(angle);
-    float generatedPSI = 52.5 + (47.5 * sineValue);
-    
-    telemetry->updateSensors(12.6,         // Battery Volts
-                             95,           // Battery %
-                             20.0,         // Water Level CM
-                             80,           // Water Level %
-                             50,           // Shots
-                             generatedPSI, // Our oscillating PSI
-                             100           // Target PSI
+    telemetry->updateSensors(battery->getVoltage(), // Battery Volts
+                             battery->getPct(),     // Battery %
+                             20.0,                  // Water Level CM
+                             80,                    // Water Level %
+                             20,                    // Shots
+                             50,                    // Our oscillating PSI
+                             100                    // Target PSI
     );
 
     delay(50);
