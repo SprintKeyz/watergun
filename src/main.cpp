@@ -1,11 +1,14 @@
 #include "pins.h"
 #include "subsystem/battery/battery.hpp"
+#include "subsystem/water/waterlevel.hpp"
 #include "telemetry/manager.h"
 
 #include <Arduino.h>
 
 TelemetryManager* telemetry = new TelemetryManager();
 BatteryManager* battery = new BatteryManager(BATTERY_PIN, DIVIDER_CONST);
+WaterLevelManager* waterLevel = new WaterLevelManager(
+    TRIG_PIN, ECHO_PIN, WATER_LEVEL_EMPTY, WATER_LEVEL_FULL);
 
 void setup() {
     Serial.begin(115200);
@@ -17,20 +20,20 @@ void setup() {
     analogReadResolution(10);
     analogSetAttenuation(ADC_11db);
 
-    // TODO: make sure we set analogreadresolution and ADC_11db attenuation
-    // somewhere else!
+    waterLevel->init();
 }
 
 void loop() {
     battery->update();
+    waterLevel->init();
 
-    telemetry->updateSensors(battery->getVoltage(), // Battery Volts
-                             battery->getPct(),     // Battery %
-                             20.0,                  // Water Level CM
-                             80,                    // Water Level %
-                             20,                    // Shots
-                             50,                    // Our oscillating PSI
-                             100                    // Target PSI
+    telemetry->updateSensors(battery->getVoltage(),  // Battery Volts
+                             battery->getPct(),      // Battery %
+                             waterLevel->getLevel(), // Water Level CM
+                             waterLevel->getPct(),   // Water Level %
+                             20,                     // Shots
+                             50,                     // Our oscillating PSI
+                             100                     // Target PSI
     );
 
     delay(50);

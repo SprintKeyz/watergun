@@ -25,7 +25,6 @@ public:
     // setters
     void setCutoff(float v);
     void setMaxV(float v);
-    void setReadResolution(float v);
 
     // misc
     void update();
