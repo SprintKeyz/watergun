@@ -7,5 +7,5 @@ struct __attribute__((packed)) TelemetryPacket {
     int waterLevelPct;
     int shotsRemaining;
     float currentPSI;
-    float targetPSI;
+    int targetPSI;
 };
