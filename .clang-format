@@ -1,0 +1,9 @@
+---
+AccessModifierOffset: -4
+IndentWidth: 4
+ColumnLimit: 80
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AlignConsecutiveMacros: true
+PointerAlignment: Left
