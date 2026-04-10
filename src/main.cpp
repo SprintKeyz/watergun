@@ -22,9 +22,9 @@ WaterPressureManager* waterPressure =
     new WaterPressureManager(PRESSURE_PIN, LEVEL_5V_DC, 150.0f);
 
 // buzzer
-BuzzerTone waterLow = {200, 200, 3, 2000};
+BuzzerTone waterLow = {100, 100, 3, 2000};
 BuzzerTone waterFull = {200, 0, 1, 0};
-BuzzerTone batt = {1000, 1000, 3, 0};
+BuzzerTone batt = {2000, 300, 3, 0};
 
 BuzzerManager* buzzer = new BuzzerManager(BUZZER_PIN, waterLow, waterFull, batt);
 
@@ -40,13 +40,31 @@ void setup() {
 
     waterLevel->init();
     buzzer->init();
+
+    // for trigger
+    pinMode(3, INPUT_PULLUP);
+    pinMode(1, OUTPUT);
+    pinMode(2, OUTPUT);
 }
 
 void loop() {
     battery->update();
     waterLevel->update();
     waterPressure->update();
-    buzzer->update(battery->getPct(), waterLevel->getPct());
+    //buzzer->update(battery->getPct(), waterLevel->getPct());
+
+    bool triggered = digitalRead(3);
+    Serial.println(triggered);
+
+    /*if (!triggered) {
+        digitalWrite(2, HIGH);
+    }
+
+    else {
+        digitalWrite(2, LOW);
+    }*/
+
+    Serial.printf("Water: %.2f (%.1f lvl, %.0f pct)\n", waterPressure->getPSI(), waterLevel->getLevel(), waterLevel->getPct());
 
     telemetry->updateSensors(battery->getVoltage(),           // Battery Volts
                              battery->getPct(),               // Battery %

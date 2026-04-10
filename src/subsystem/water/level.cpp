@@ -69,7 +69,12 @@ void WaterLevelManager::update() {
 }
 
 float WaterLevelManager::lvlToPct(float lvl) {
-    return (_empty - lvl) / (_empty - _full);
+    float pct = (_empty - lvl) / (_empty - _full);
+
+    if (pct < 0.0) return 0.0;
+    if (pct > 1.0) return 1.0;
+
+    return pct;
 }
 
 int WaterLevelManager::pctToShots(float pct) {

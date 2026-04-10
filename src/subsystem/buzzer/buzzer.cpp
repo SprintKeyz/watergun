@@ -14,27 +14,30 @@ BuzzerManager::BuzzerManager(uint8_t pin,
 void BuzzerManager::init() { pinMode(_pin, OUTPUT); }
 
 void BuzzerManager::update(float batteryPct, float waterLvlPct) {
+
+    //Serial.print("Batt: "); Serial.println(batteryPct); 
+    //Serial.print("Water: "); Serial.println(waterLvlPct);
+
     BuzzerTone* nextTone = nullptr;
 
-    if (batteryPct == 0) {
-        // takes priority
+    if (static_cast<int>(batteryPct) == 0) { // Use <= for float safety
         nextTone = &_batteryLow;
     }
-
-    else if (waterLvlPct == 0) {
+    else if (static_cast<int>(waterLvlPct) == 0) {
         nextTone = &_waterLow;
     }
-
-    else if (waterLvlPct == 100) {
+    else if (static_cast<int>(waterLvlPct) == 100) {
         nextTone = &_waterFull;
     }
 
+    // Check for a state change
     if (nextTone != _currentTone) {
         _currentTone = nextTone;
         _currentRepeat = 0;
         _lastStateChange = millis();
         _isBeeping = false;
-        digitalWrite(_pin, LOW); // Reset pin
+        _isCoolingDown = false; // Add this to reset cooldown state
+        digitalWrite(_pin, LOW); 
         
         if (_currentTone != nullptr) {
              _isBeeping = true;
@@ -42,8 +45,11 @@ void BuzzerManager::update(float batteryPct, float waterLvlPct) {
         }
     }
 
+    // Only run the handler if we actually have a tone to play
     if (_currentTone != nullptr) {
         handleBuzzerState();
+    } else {
+        digitalWrite(_pin, LOW); // Force off if no tone is active
     }
 }
 
