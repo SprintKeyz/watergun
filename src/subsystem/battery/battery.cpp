@@ -10,8 +10,8 @@ BatteryManager::BatteryManager(uint8_t pin, float c) {
     _ema = new EMAFilter(0.1);
 }
 
-float BatteryManager::getVoltage() {
-    return _vcc;
+float BatteryManager::getVoltage(bool ema) {
+    return ema ? _vcc : _vccNoEMA;
 }
 
 float BatteryManager::getCutoffV() {
@@ -29,6 +29,8 @@ float BatteryManager::getPct() {
 void BatteryManager::update() {
     float adcV = analogReadMilliVolts(_pin) / 1000.0f;
     float rawV = adcV / _dividerConst;
+    _vccNoEMA = rawV;
+
     float emaV = _ema->update(rawV);
 
     // now, we can update our voltage and pct

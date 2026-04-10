@@ -28,6 +28,20 @@ BuzzerTone batt = {2000, 300, 3, 0};
 
 BuzzerManager* buzzer = new BuzzerManager(BUZZER_PIN, waterLow, waterFull, batt);
 
+const int freq = 10000;
+const int resolution = 10;
+const float targetV = 12.0;
+
+void waterLevelTask(void *pvParameters) {
+    for (;;) {
+        waterLevel->update();
+        // Run this slower than the main loop to save resources
+        // 100ms (10Hz) is plenty for water level
+        vTaskDelay(pdMS_TO_TICKS(100)); 
+    }
+}
+
+
 void setup() {
     Serial.begin(115200);
     Serial.println("Initializing...");
@@ -44,36 +58,62 @@ void setup() {
     // for trigger
     pinMode(3, INPUT_PULLUP);
     pinMode(1, OUTPUT);
-    pinMode(2, OUTPUT);
+    //pinMode(2, OUTPUT);
+
+    ledcAttach(2, freq, resolution);
+
+    xTaskCreatePinnedToCore(waterLevelTask, "WaterLevelTask", 4096, NULL, 1, NULL, 1);
+}
+
+int calculateSafeDuty(float vBatt, float vTarget) {
+    if (vBatt <= vTarget) return 1023;
+
+    float ratio = vTarget / vBatt;
+    int duty = ratio * 1023;
+
+    if (duty > 1023) duty = 1023;
+    if (duty < 0) duty = 0;
+
+    return duty;
 }
 
 void loop() {
     battery->update();
-    waterLevel->update();
+    //waterLevel->update();
     waterPressure->update();
     //buzzer->update(battery->getPct(), waterLevel->getPct());
 
     bool triggered = digitalRead(3);
     Serial.println(triggered);
 
-    /*if (!triggered) {
-        digitalWrite(2, HIGH);
+    int targetDuty = calculateSafeDuty(battery->getVoltage(false), targetV);
+
+    if (waterPressure->getPSI() > 80) {
+        targetDuty = 0;
+    }
+
+    ledcWrite(2, targetDuty);
+
+
+    if (!triggered) {
+        digitalWrite(1, HIGH);
     }
 
     else {
-        digitalWrite(2, LOW);
-    }*/
+        digitalWrite(1, LOW);
+    }
 
     Serial.printf("Water: %.2f (%.1f lvl, %.0f pct)\n", waterPressure->getPSI(), waterLevel->getLevel(), waterLevel->getPct());
+    Serial.printf("Voltage: %.2f", battery->getVoltage(false));
 
-    telemetry->updateSensors(battery->getVoltage(),           // Battery Volts
+    /*telemetry->updateSensors(battery->getVoltage(),           // Battery Volts
                              battery->getPct(),               // Battery %
                              waterLevel->getLevel(),          // Water Level CM
                              waterLevel->getPct(),            // Water Level %
                              waterLevel->getShotsRemaining(), // Shots
                              waterPressure->getPSI(),  // Our oscillating PSI
                              telemetry->getPSITarget() // Target PSI
-    );
+    );*/
 
-    delay(50);
+    delay(10);
 }

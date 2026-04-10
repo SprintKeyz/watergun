@@ -17,7 +17,7 @@ public:
     ~BatteryManager();
 
     // getters
-    float getVoltage();
+    float getVoltage(bool ema = true);
     float getCutoffV();
     float getMaxV();
     float getPct();
@@ -32,6 +32,7 @@ public:
 private:
     // attributes
     float _vcc;
+    float _vccNoEMA;
     float _pct;
     float _cutoff = 13.5; // 1.5 LDO (12v rail)
     float _full = 16.8; // 4s1p
