@@ -6,7 +6,7 @@ class EMAFilter;
 
 class WaterLevelManager {
 public:
-    WaterLevelManager(uint8_t trig, uint8_t echo, float empty, float full);
+    WaterLevelManager(uint8_t trig, uint8_t echo, float empty, float full, int shots);
     ~WaterLevelManager();
 
     // getters
@@ -14,10 +14,13 @@ public:
     float getPct();
     float getEmpty();
     float getFull();
+    int getShotsRemaining();
+    int getShotsTotal();
 
     // setters
     void setEmpty(float cm);
     void setFull(float cm);
+    void setShots(int shots);
 
     // misc
     void init();
@@ -29,6 +32,8 @@ private:
     float _pct;
     float _empty;
     float _full;
+    int _shotsTotal;
+    int _shotsRemain;
 
     // hardware
     uint8_t _trig;
@@ -39,4 +44,5 @@ private:
 
     // functions
     float lvlToPct(float lvl);
+    int pctToShots(float pct);
 };

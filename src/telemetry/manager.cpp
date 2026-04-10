@@ -15,9 +15,13 @@ TelemetryManager::TelemetryManager() {
 
 void TelemetryManager::setPSITarget(int target) {
     if (xSemaphoreTake(_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-        _packet.targetPSI = target;
+        _psiTarget = target;
         xSemaphoreGive(_mutex);
     }
+}
+
+int TelemetryManager::getPSITarget() {
+    return _psiTarget;
 }
 
 void TelemetryManager::updateSensors(float batteryV,

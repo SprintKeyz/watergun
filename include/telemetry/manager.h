@@ -33,6 +33,7 @@ public:
     void handleConnect();
     void handleDisconnect();
     void setPSITarget(int target);
+    int getPSITarget();
     TelemetryPacket getData();
 
 private:
@@ -47,6 +48,8 @@ private:
     TelemetryPacket _prevPacket;
     SemaphoreHandle_t _mutex;
     TaskHandle_t _taskHandle;
+
+    int _psiTarget = 0;
 
     std::string _devname;
     BLEServer *_pServer;

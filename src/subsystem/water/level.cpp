@@ -1,13 +1,14 @@
-#include "subsystem/water/waterlevel.hpp"
+#include "subsystem/water/level.hpp"
 #include "util/ema.hpp"
 
 #include <Arduino.h>
 
-WaterLevelManager::WaterLevelManager(uint8_t trig, uint8_t echo, float empty, float full) {
+WaterLevelManager::WaterLevelManager(uint8_t trig, uint8_t echo, float empty, float full, int shots) {
     _trig = trig;
     _echo = echo;
     _empty = empty;
     _full = full;
+    _shotsTotal = shots;
 
     _ema = new EMAFilter(0.1);
 }
@@ -28,12 +29,24 @@ float WaterLevelManager::getFull() {
     return _full;
 }
 
+int WaterLevelManager::getShotsTotal() {
+    return _shotsTotal;
+}
+
+int WaterLevelManager::getShotsRemaining() {
+    return _shotsRemain;
+}
+
 void WaterLevelManager::setEmpty(float cm) {
     _empty = cm;
 }
 
 void WaterLevelManager::setFull(float cm) {
     _full = cm;
+}
+
+void WaterLevelManager::setShots(int shots) {
+    _shotsTotal = shots;
 }
 
 void WaterLevelManager::init() {
@@ -52,8 +65,13 @@ void WaterLevelManager::update() {
 
     _lvl = emaCM;
     _pct = lvlToPct(emaCM);
+    _shotsRemain = pctToShots(_pct);
 }
 
 float WaterLevelManager::lvlToPct(float lvl) {
     return (_empty - lvl) / (_empty - _full);
+}
+
+int WaterLevelManager::pctToShots(float pct) {
+    return static_cast<int>(std::round(pct * _shotsTotal));
 }
