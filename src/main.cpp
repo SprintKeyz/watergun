@@ -88,23 +88,20 @@ void loop() {
 
     int targetDuty = calculateSafeDuty(battery->getVoltage(false), targetV);
 
-    if (waterPressure->getPSI() > 80) {
-        targetDuty = 0;
-    }
-
-    ledcWrite(2, targetDuty);
+    //ledcWrite(2, targetDuty);
 
 
     if (!triggered) {
-        digitalWrite(1, HIGH);
+        //digitalWrite(1, HIGH);
+        ledcWrite(2, targetDuty);
     }
 
     else {
-        digitalWrite(1, LOW);
+        ledcWrite(2, 0);
+        //digitalWrite(1, LOW);
     }
 
-    Serial.printf("Water: %.2f (%.1f lvl, %.0f pct)\n", waterPressure->getPSI(), waterLevel->getLevel(), waterLevel->getPct());
-    Serial.printf("Voltage: %.2f", battery->getVoltage(false));
+    Serial.printf("Pressure: %.2f", waterPressure->getPSI());
 
     /*telemetry->updateSensors(battery->getVoltage(),           // Battery Volts
                              battery->getPct(),               // Battery %
@@ -115,5 +112,5 @@ void loop() {
                              telemetry->getPSITarget() // Target PSI
     );*/
 
-    delay(10);
+    delay(100);
 }

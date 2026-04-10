@@ -2,7 +2,7 @@
 
 #define BATTERY_PIN A3 // 2
 #define BATTERY_DC  0.1788
-#define LEVEL_5V_DC 0.6875
+#define LEVEL_5V_DC 0.6872
 
 #define TRIG_PIN          8
 #define ECHO_PIN          5

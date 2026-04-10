@@ -9,7 +9,7 @@ WaterPressureManager::WaterPressureManager(uint8_t pin, float c, float maxPSI) {
     _dividerConst = c;
     _maxPSI = maxPSI;
 
-    _ema = new EMAFilter(0.1);
+    _ema = new EMAFilter(0.25);
 }
 
 float WaterPressureManager::getPSI() {
