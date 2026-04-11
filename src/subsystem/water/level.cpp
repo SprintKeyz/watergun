@@ -64,12 +64,15 @@ void WaterLevelManager::update() {
     float emaCM = _ema->update(rawCM);
 
     _lvl = emaCM;
+    printf("EMA CM: %.2f\n", emaCM);
     _pct = lvlToPct(emaCM);
     _shotsRemain = pctToShots(_pct);
 }
 
 float WaterLevelManager::lvlToPct(float lvl) {
+    printf("lvl: %.2f\n", lvl);
     float pct = (_empty - lvl) / (_empty - _full);
+    printf("pct: %.2f (empty: %.2f, full: %.2f)\n", pct, _empty, _full);
 
     if (pct < 0.0) return 0.0;
     if (pct > 1.0) return 1.0;
