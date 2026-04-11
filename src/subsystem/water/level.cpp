@@ -10,7 +10,7 @@ WaterLevelManager::WaterLevelManager(uint8_t trig, uint8_t echo, float empty, fl
     _full = full;
     _shotsTotal = shots;
 
-    _ema = new EMAFilter(0.1);
+    _ema = new EMAFilter(0.15);
 }
 
 float WaterLevelManager::getLevel() {

@@ -1,116 +1,113 @@
 #include "pins.h"
 #include "subsystem/battery/battery.hpp"
 #include "subsystem/buzzer/buzzer.hpp"
+#include "subsystem/pump/pump.hpp"
+#include "subsystem/valve/valve.hpp"
 #include "subsystem/water/level.hpp"
 #include "subsystem/water/pressure.hpp"
 #include "telemetry/manager.h"
 
 #include <Arduino.h>
 
-// BLE stack
+// --- Objects ---
 TelemetryManager* telemetry = new TelemetryManager();
-
-// battery
 BatteryManager* battery = new BatteryManager(BATTERY_PIN, BATTERY_DC);
+WaterLevelManager* waterLevel = new WaterLevelManager(TRIG_PIN, ECHO_PIN, WATER_LEVEL_EMPTY, WATER_LEVEL_FULL, MAX_SHOTS);
+WaterPressureManager* waterPressure = new WaterPressureManager(PRESSURE_PIN, LEVEL_5V_DC, 150.0f);
+BuzzerManager* buzzer = new BuzzerManager(BUZZER_PIN, {100, 100, 3, 2000}, {200, 0, 1, 0}, {2000, 300, 3, 0});
+Valve* valve = new Valve(1);
+Pump* pump = new Pump(2, {100, 10000}); // 100ms soft start
 
-// tank level
-WaterLevelManager* waterLevel = new WaterLevelManager(
-    TRIG_PIN, ECHO_PIN, WATER_LEVEL_EMPTY, WATER_LEVEL_FULL, MAX_SHOTS);
+// --- Timing/State ---
+unsigned long valveOpenStartTime = 0;
+bool isFiring = false;
+bool isRecharging = false;
+const float cutInOffset = -20.0f; 
 
-// water pressure
-WaterPressureManager* waterPressure =
-    new WaterPressureManager(PRESSURE_PIN, LEVEL_5V_DC, 150.0f);
-
-// buzzer
-BuzzerTone waterLow = {100, 100, 3, 2000};
-BuzzerTone waterFull = {200, 0, 1, 0};
-BuzzerTone batt = {2000, 300, 3, 0};
-
-BuzzerManager* buzzer = new BuzzerManager(BUZZER_PIN, waterLow, waterFull, batt);
-
-const int freq = 10000;
-const int resolution = 10;
-const float targetV = 12.0;
-
-void waterLevelTask(void *pvParameters) {
+// --- Core 1 Task: Dedicated to Pump & Audio Stability ---
+void pumpTask(void* pvParameters) {
     for (;;) {
-        waterLevel->update();
-        // Run this slower than the main loop to save resources
-        // 100ms (10Hz) is plenty for water level
-        vTaskDelay(pdMS_TO_TICKS(100)); 
+        // We update the pump here so the PWM ramp stays smooth 
+        // regardless of what the main loop is doing.
+        pump->update(battery->getVoltage(false));
+        buzzer->update(battery->getPct(), waterLevel->getPct());
+        
+        vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz 
     }
 }
 
+// --- Core 0 Task: Dedicated to Water Level (The "Slow" Sensor) ---
+void waterLevelTask(void* pvParameters) {
+    for (;;) {
+        waterLevel->update(); // This is the only slow part
+        vTaskDelay(pdMS_TO_TICKS(500)); // Update level 10 times a second
+    }
+}
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("Initializing...");
 
+    // Initialize all hardware
     telemetry->init("WaterGun");
-    telemetry->start(0);
+    telemetry->start(0); // This usually starts its own task on Core 0
 
     analogReadResolution(10);
     analogSetAttenuation(ADC_11db);
 
     waterLevel->init();
     buzzer->init();
-
-    // for trigger
+    pump->init();
+    valve->init();
     pinMode(3, INPUT_PULLUP);
-    pinMode(1, OUTPUT);
-    //pinMode(2, OUTPUT);
 
-    ledcAttach(2, freq, resolution);
-
-    xTaskCreatePinnedToCore(waterLevelTask, "WaterLevelTask", 4096, NULL, 1, NULL, 1);
-}
-
-int calculateSafeDuty(float vBatt, float vTarget) {
-    if (vBatt <= vTarget) return 1023;
-
-    float ratio = vTarget / vBatt;
-    int duty = ratio * 1023;
-
-    if (duty > 1023) duty = 1023;
-    if (duty < 0) duty = 0;
-
-    return duty;
+    // Create the tasks
+    xTaskCreatePinnedToCore(waterLevelTask, "LevelTask", 2048, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(pumpTask, "PumpTask", 2048, NULL, 2, NULL, 1);
 }
 
 void loop() {
+    // 1. Update Fast Sensors (Analog reads take microseconds)
     battery->update();
-    //waterLevel->update();
     waterPressure->update();
-    //buzzer->update(battery->getPct(), waterLevel->getPct());
 
-    bool triggered = digitalRead(3);
-    Serial.println(triggered);
+    float currentPSI = waterPressure->getPSI();
+    float targetPSI = telemetry->getPSITarget();
+    bool hasWater = waterLevel->getPct() > 0;
+    bool triggerPressed = !digitalRead(3);
 
-    int targetDuty = calculateSafeDuty(battery->getVoltage(false), targetV);
-
-    //ledcWrite(2, targetDuty);
-
-
-    if (!triggered) {
-        //digitalWrite(1, HIGH);
-        ledcWrite(2, targetDuty);
+    // 2. Trigger Logic (Non-blocking)
+    if (triggerPressed && !isFiring && hasWater && (currentPSI >= (targetPSI + cutInOffset))) {
+        valve->open();
+        isFiring = true;
+        valveOpenStartTime = millis();
     }
 
-    else {
-        ledcWrite(2, 0);
-        //digitalWrite(1, LOW);
+    if (isFiring) {
+        if (millis() - valveOpenStartTime >= 1000 || !hasWater) {
+            valve->close();
+            isFiring = false;
+        }
     }
 
-    Serial.printf("Pressure: %.2f", waterPressure->getPSI());
+    // 3. Pump Hysteresis State
+    if (!hasWater) {
+        isRecharging = false;
+    } else if (currentPSI <= (targetPSI + cutInOffset)) {
+        isRecharging = true;
+    } else if (currentPSI >= targetPSI) {
+        isRecharging = false;
+    }
 
-    /*telemetry->updateSensors(battery->getVoltage(),           // Battery Volts
-                             battery->getPct(),               // Battery %
-                             waterLevel->getLevel(),          // Water Level CM
-                             waterLevel->getPct(),            // Water Level %
-                             waterLevel->getShotsRemaining(), // Shots
-                             waterPressure->getPSI(),  // Our oscillating PSI
-                             telemetry->getPSITarget() // Target PSI
-    );*/
+    if (isRecharging) pump->start();
+    else pump->stop();
 
-    delay(100);
+    // 4. Telemetry Update
+    telemetry->updateSensors(
+        battery->getVoltage(), battery->getPct(),
+        waterLevel->getLevel(), waterLevel->getPct(),
+        waterLevel->getShotsRemaining(), currentPSI, targetPSI
+    );
+
+    // Loop can now run as fast as possible
+    delay(6); 
 }
