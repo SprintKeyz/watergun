@@ -101,6 +101,8 @@ void loop() {
     if (isRecharging) pump->start();
     else pump->stop();
 
+    printf("Water level: %.2f, Pct: %.2f\n", waterLevel->getLevel(), waterLevel->getPct());
+
     // 4. Telemetry Update
     telemetry->updateSensors(
         battery->getVoltage(), battery->getPct(),
