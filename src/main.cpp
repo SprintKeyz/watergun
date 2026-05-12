@@ -14,7 +14,7 @@ TelemetryManager* telemetry = new TelemetryManager();
 BatteryManager* battery = new BatteryManager(BATTERY_PIN, BATTERY_DC);
 WaterLevelManager* waterLevel = new WaterLevelManager(TRIG_PIN, ECHO_PIN, WATER_LEVEL_EMPTY, WATER_LEVEL_FULL, MAX_SHOTS);
 WaterPressureManager* waterPressure = new WaterPressureManager(PRESSURE_PIN, LEVEL_5V_DC, 150.0f);
-BuzzerManager* buzzer = new BuzzerManager(BUZZER_PIN, {100, 100, 3, 2000}, {200, 0, 1, 0}, {2000, 300, 3, 0});
+BuzzerManager* buzzer = new BuzzerManager(BUZZER_PIN, {100, 100, 3, 2000}, {3000, 10, 1, 100000000}, {2000, 300, 3, 0});
 Valve* valve = new Valve(1);
 Pump* pump = new Pump(2, {100, 10000}); // 100ms soft start
 
@@ -30,7 +30,7 @@ void pumpTask(void* pvParameters) {
         // We update the pump here so the PWM ramp stays smooth 
         // regardless of what the main loop is doing.
         pump->update(battery->getVoltage(false));
-        buzzer->update(battery->getPct(), waterLevel->getPct());
+        //buzzer->update(battery->getPct(), waterLevel->getPct());
         
         vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz 
     }
@@ -55,14 +55,14 @@ void setup() {
     analogSetAttenuation(ADC_11db);
 
     waterLevel->init();
-    buzzer->init();
+    //buzzer->init();
     pump->init();
     valve->init();
     pinMode(3, INPUT_PULLUP);
 
     // Create the tasks
-    xTaskCreatePinnedToCore(waterLevelTask, "LevelTask", 2048, NULL, 1, NULL, 0);
-    xTaskCreatePinnedToCore(pumpTask, "PumpTask", 2048, NULL, 2, NULL, 1);
+    xTaskCreatePinnedToCore(waterLevelTask, "LevelTask", 4096, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(pumpTask, "PumpTask", 4096, NULL, 2, NULL, 1);
 }
 
 void loop() {
@@ -72,18 +72,18 @@ void loop() {
 
     float currentPSI = waterPressure->getPSI();
     float targetPSI = telemetry->getPSITarget();
-    bool hasWater = waterLevel->getPct() > 0;
+    bool hasWater = /*waterLevel->getPct() > 0;*/ true;
     bool triggerPressed = !digitalRead(3);
 
     // 2. Trigger Logic (Non-blocking)
-    if (triggerPressed && !isFiring && hasWater && (currentPSI >= (targetPSI + cutInOffset))) {
+    if (triggerPressed && !isFiring/* && (currentPSI >= (targetPSI + cutInOffset))*/) {
         valve->open();
         isFiring = true;
         valveOpenStartTime = millis();
     }
 
     if (isFiring) {
-        if (millis() - valveOpenStartTime >= 1000 || !hasWater) {
+        if (millis() - valveOpenStartTime >= 10 || !hasWater) {
             valve->close();
             isFiring = false;
         }
@@ -98,10 +98,10 @@ void loop() {
         isRecharging = false;
     }
 
+    //printf("Level: %.2f", waterLevel->getLevel());
+
     if (isRecharging) pump->start();
     else pump->stop();
-
-    //printf("Water level: %.2f, Pct: %.2f\n", waterLevel->getLevel(), waterLevel->getPct());
 
     // 4. Telemetry Update
     telemetry->updateSensors(

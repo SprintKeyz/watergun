@@ -8,6 +8,7 @@ BuzzerManager::BuzzerManager(uint8_t pin,
                              BuzzerTone batteryLow) {
     _pin = pin;
     _waterLow = waterLow;
+    _waterFull = waterFull;
     _batteryLow = batteryLow;
 }
 
@@ -20,14 +21,14 @@ void BuzzerManager::update(float batteryPct, float waterLvlPct) {
 
     BuzzerTone* nextTone = nullptr;
 
-    if (static_cast<int>(batteryPct) == 0) { // Use <= for float safety
+    if (batteryPct < 0.01f) {          // 15% Battery
         nextTone = &_batteryLow;
     }
-    else if (static_cast<int>(waterLvlPct) == 0) {
+    else if (waterLvlPct < 5.0f) {    // 5% Water
         nextTone = &_waterLow;
     }
-    else if (static_cast<int>(waterLvlPct) == 100) {
-        nextTone = &_waterFull;
+    else if (waterLvlPct > 95.0f) {    // 98% Water
+        //nextTone = &_waterFull;
     }
 
     // Check for a state change

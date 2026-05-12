@@ -6,8 +6,8 @@
 
 #define TRIG_PIN          8
 #define ECHO_PIN          5
-#define WATER_LEVEL_EMPTY 11.0f
-#define WATER_LEVEL_FULL  2.0f
+#define WATER_LEVEL_EMPTY 5.8f
+#define WATER_LEVEL_FULL  3.2f
 #define MAX_SHOTS         20
 
 #define PRESSURE_PIN A5 // 6
